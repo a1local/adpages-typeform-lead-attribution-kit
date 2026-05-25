@@ -1,0 +1,11 @@
+{
+  "name": "@adpages/typeform-lead-attribution-kit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only Typeform lead attribution mapping kit for UTM and click-ID hidden fields.",
+  "scripts": {
+    "check": "node --check src/lead-attribution.mjs && node --check snippets/hidden-field-url-builder.js && node --check scripts/check.mjs && node --check scripts/smoke.mjs && node scripts/check.mjs",
+    "smoke": "node scripts/smoke.mjs"
+  }
+}
