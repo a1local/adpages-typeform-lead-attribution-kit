@@ -1,0 +1,167 @@
+{
+  "event_id": "event_typeform_example_001",
+  "event_type": "form_response",
+  "form_response": {
+    "form_id": "form_abc123",
+    "token": "response_abc123",
+    "landed_at": "2026-05-24T07:15:10Z",
+    "submitted_at": "2026-05-24T07:18:40Z",
+    "hidden": {
+      "utm_source": "google",
+      "utm_medium": "cpc",
+      "utm_campaign": "emergency-plumber-perth",
+      "utm_term": "blocked drain plumber",
+      "utm_content": "rsa-headline-a",
+      "landing_page_url": "https://exampleplumbing.com.au/emergency-plumber-perth?utm_source=google&utm_medium=cpc&utm_campaign=emergency-plumber-perth&gclid=test-gclid-123",
+      "referrer_url": "https://www.google.com/",
+      "gclid": "test-gclid-123",
+      "msclkid": "test-msclkid-456",
+      "fbclid": "test-fbclid-789",
+      "first_touch_source": "google",
+      "first_touch_medium": "cpc",
+      "first_touch_campaign": "emergency-plumber-perth",
+      "first_touch_url": "https://exampleplumbing.com.au/emergency-plumber-perth",
+      "first_touch_at": "2026-05-24T07:12:00Z",
+      "last_touch_source": "google",
+      "last_touch_medium": "cpc",
+      "last_touch_campaign": "emergency-plumber-perth",
+      "last_touch_url": "https://exampleplumbing.com.au/emergency-plumber-perth?utm_source=google&utm_medium=cpc&utm_campaign=emergency-plumber-perth&gclid=test-gclid-123",
+      "last_touch_at": "2026-05-24T07:15:10Z",
+      "consent_status": "granted",
+      "consent_source": "Typeform checkbox",
+      "source_context": "Google Ads landing page test"
+    },
+    "definition": {
+      "id": "form_abc123",
+      "title": "Example Plumbing Emergency Quote",
+      "fields": [
+        {
+          "id": "field_name",
+          "ref": "contact_name",
+          "type": "short_text",
+          "title": "Name"
+        },
+        {
+          "id": "field_email",
+          "ref": "email",
+          "type": "email",
+          "title": "Email"
+        },
+        {
+          "id": "field_phone",
+          "ref": "phone",
+          "type": "phone_number",
+          "title": "Phone"
+        },
+        {
+          "id": "field_service",
+          "ref": "service_requested",
+          "type": "multiple_choice",
+          "title": "What do you need help with?"
+        },
+        {
+          "id": "field_area",
+          "ref": "service_area",
+          "type": "short_text",
+          "title": "Suburb"
+        },
+        {
+          "id": "field_urgency",
+          "ref": "urgency",
+          "type": "multiple_choice",
+          "title": "How urgent is it?"
+        },
+        {
+          "id": "field_message",
+          "ref": "message",
+          "type": "long_text",
+          "title": "Tell us what happened"
+        },
+        {
+          "id": "field_consent",
+          "ref": "marketing_consent",
+          "type": "yes_no",
+          "title": "Can we contact you about this enquiry?"
+        }
+      ]
+    },
+    "answers": [
+      {
+        "type": "text",
+        "field": {
+          "id": "field_name",
+          "ref": "contact_name",
+          "type": "short_text"
+        },
+        "text": "Taylor Example"
+      },
+      {
+        "type": "email",
+        "field": {
+          "id": "field_email",
+          "ref": "email",
+          "type": "email"
+        },
+        "email": "taylor@example.com"
+      },
+      {
+        "type": "phone_number",
+        "field": {
+          "id": "field_phone",
+          "ref": "phone",
+          "type": "phone_number"
+        },
+        "phone_number": "+61 400 000 123"
+      },
+      {
+        "type": "choice",
+        "field": {
+          "id": "field_service",
+          "ref": "service_requested",
+          "type": "multiple_choice"
+        },
+        "choice": {
+          "label": "Blocked drain"
+        }
+      },
+      {
+        "type": "text",
+        "field": {
+          "id": "field_area",
+          "ref": "service_area",
+          "type": "short_text"
+        },
+        "text": "Mount Lawley"
+      },
+      {
+        "type": "choice",
+        "field": {
+          "id": "field_urgency",
+          "ref": "urgency",
+          "type": "multiple_choice"
+        },
+        "choice": {
+          "label": "Emergency today"
+        }
+      },
+      {
+        "type": "text",
+        "field": {
+          "id": "field_message",
+          "ref": "message",
+          "type": "long_text"
+        },
+        "text": "Water is backing up in the laundry drain."
+      },
+      {
+        "type": "boolean",
+        "field": {
+          "id": "field_consent",
+          "ref": "marketing_consent",
+          "type": "yes_no"
+        },
+        "boolean": true
+      }
+    ]
+  }
+}

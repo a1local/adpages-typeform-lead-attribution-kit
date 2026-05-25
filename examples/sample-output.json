@@ -1,0 +1,48 @@
+{
+  "platform": "typeform",
+  "manualUseOnly": true,
+  "typeform": {
+    "formId": "form_abc123",
+    "responseId": "response_abc123",
+    "formTitle": "Example Plumbing Emergency Quote",
+    "landedAt": "2026-05-24T07:15:10Z",
+    "submittedAt": "2026-05-24T07:18:40Z"
+  },
+  "fieldValues": {
+    "response_id": "response_abc123",
+    "response_form_id": "form_abc123",
+    "answer_contact_name": "Taylor Example",
+    "answer_email": "taylor@example.com",
+    "answer_phone": "+61 400 000 123",
+    "answer_service_requested": "Blocked drain",
+    "answer_service_area": "Mount Lawley",
+    "answer_urgency": "Emergency today",
+    "answer_marketing_consent": "yes",
+    "hidden_utm_source": "google",
+    "hidden_utm_medium": "cpc",
+    "hidden_utm_campaign": "emergency-plumber-perth",
+    "hidden_utm_term": "blocked drain plumber",
+    "hidden_utm_content": "rsa-headline-a",
+    "hidden_gclid": "test-gclid-123",
+    "hidden_msclkid": "test-msclkid-456",
+    "hidden_fbclid": "test-fbclid-789",
+    "derived_first_touch_summary": "google / cpc / emergency-plumber-perth at 2026-05-24T07:12:00Z",
+    "derived_last_touch_summary": "google / cpc / emergency-plumber-perth at 2026-05-24T07:15:10Z",
+    "derived_consent_status": "granted",
+    "derived_source_summary": "google / cpc / emergency-plumber-perth"
+  },
+  "humanSummary": "Typeform lead attribution preview: Taylor Example asked about Blocked drain in Mount Lawley from google / cpc / emergency-plumber-perth. Landing page: https://exampleplumbing.com.au/emergency-plumber-perth?utm_source=google&utm_medium=cpc&utm_campaign=emergency-plumber-perth&gclid=test-gclid-123. First touch: google / cpc / emergency-plumber-perth at 2026-05-24T07:12:00Z. Last touch: google / cpc / emergency-plumber-perth at 2026-05-24T07:15:10Z. Consent: granted via Typeform checkbox.",
+  "qualityChecklistStatuses": {
+    "Typeform response shape": "pass",
+    "Typeform hidden fields": "pass",
+    "Campaign attribution": "pass",
+    "Click identifiers": "pass",
+    "First and last touch": "pass",
+    "Landing page context": "pass",
+    "Contact path": "pass",
+    "Service fit": "pass",
+    "Consent context": "pass",
+    "Human QA": "review"
+  },
+  "missingRequired": []
+}

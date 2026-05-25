@@ -1,0 +1,464 @@
+import { readFile } from "node:fs/promises";
+
+const VALID_SOURCE_KINDS = new Set(["response", "hidden", "answer", "derived"]);
+const VALID_TYPES = new Set(["identity", "qualification", "attribution", "consent", "review"]);
+const HIDDEN_ALIASES = {
+  utm_source: ["utm_source"],
+  utm_medium: ["utm_medium"],
+  utm_campaign: ["utm_campaign"],
+  utm_term: ["utm_term"],
+  utm_content: ["utm_content"],
+  landing_page_url: ["landing_page_url", "landing_page", "landing_url", "page_url"],
+  referrer_url: ["referrer_url", "referrer", "document_referrer"],
+  gclid: ["gclid"],
+  msclkid: ["msclkid"],
+  fbclid: ["fbclid"],
+  first_touch_source: ["first_touch_source", "first_source"],
+  first_touch_medium: ["first_touch_medium", "first_medium"],
+  first_touch_campaign: ["first_touch_campaign", "first_campaign"],
+  first_touch_url: ["first_touch_url", "first_url"],
+  first_touch_at: ["first_touch_at", "first_touch_timestamp", "first_at"],
+  last_touch_source: ["last_touch_source", "last_source"],
+  last_touch_medium: ["last_touch_medium", "last_medium"],
+  last_touch_campaign: ["last_touch_campaign", "last_campaign"],
+  last_touch_url: ["last_touch_url", "last_url"],
+  last_touch_at: ["last_touch_at", "last_touch_timestamp", "last_at"],
+  consent_status: ["consent_status", "consent"],
+  consent_source: ["consent_source", "consent_method"],
+  source_context: ["source_context", "tracking_context"]
+};
+
+export async function readJsonFile(filePath) {
+  return JSON.parse(await readFile(filePath, "utf8"));
+}
+
+export function createAttributionPlan({ response, fieldMap }) {
+  assertObject(response, "response must be an object");
+  const normalizedMap = normalizeFieldMap(fieldMap);
+  const formResponse = extractFormResponse(response);
+  const answers = normalizeAnswers(formResponse.answers ?? []);
+  const hidden = normalizeHiddenFields(formResponse.hidden ?? {});
+  const form = {
+    formId: clean(formResponse.form_id || formResponse.formId || formResponse.definition?.id),
+    responseId: clean(formResponse.token || formResponse.response_id || response.event_id),
+    formTitle: clean(formResponse.definition?.title || formResponse.title),
+    landedAt: clean(formResponse.landed_at),
+    submittedAt: clean(formResponse.submitted_at)
+  };
+  const derived = createDerivedValues({ form, hidden, answers });
+  const source = {
+    response,
+    form,
+    hidden,
+    answers,
+    derived
+  };
+
+  const mappedFields = normalizedMap.fields.map((field) => {
+    const value = clean(firstPresent([
+      getByPath(source, field.sourcePath),
+      field.fallback
+    ]));
+
+    return {
+      sourceKey: field.sourceKey,
+      sourceKind: field.sourceKind,
+      typeformFieldRef: field.typeformFieldRef,
+      outputKey: field.outputKey,
+      type: field.type,
+      value,
+      required: field.required
+    };
+  });
+  const fieldValues = Object.fromEntries(mappedFields.map((field) => [field.outputKey, field.value]));
+  const missingRequired = mappedFields
+    .filter((field) => field.required && !field.value)
+    .map((field) => field.sourceKey);
+
+  return {
+    kit: normalizedMap.kit,
+    version: normalizedMap.kitVersion,
+    platform: normalizedMap.platform,
+    manualUseOnly: true,
+    disclaimer: "Local preview only. This kit does not call the Typeform API, install OAuth, receive webhooks, or write lead data.",
+    typeform: form,
+    respondent: {
+      name: clean(answers.contact_name),
+      email: clean(answers.email),
+      phone: clean(answers.phone)
+    },
+    lead: {
+      service: clean(answers.service_requested),
+      serviceArea: clean(answers.service_area),
+      urgency: clean(answers.urgency),
+      message: clean(answers.message)
+    },
+    attribution: {
+      utm: {
+        source: derived.utm_source,
+        medium: derived.utm_medium,
+        campaign: derived.utm_campaign,
+        term: derived.utm_term,
+        content: derived.utm_content
+      },
+      clickIds: {
+        gclid: derived.gclid,
+        msclkid: derived.msclkid,
+        fbclid: derived.fbclid
+      },
+      landingPageUrl: derived.landing_page_url,
+      referrerUrl: derived.referrer_url,
+      firstTouch: {
+        summary: derived.first_touch_summary,
+        url: derived.first_touch_url
+      },
+      lastTouch: {
+        summary: derived.last_touch_summary,
+        url: derived.last_touch_url
+      },
+      consent: {
+        status: derived.consent_status,
+        source: derived.consent_source
+      },
+      sourceContext: derived.source_context,
+      sourceSummary: derived.source_summary
+    },
+    fieldValues,
+    mappedFields,
+    humanSummary: derived.human_summary,
+    qualityChecklist: buildQualityChecklist({ form, hidden, answers, derived, formResponse }),
+    missingRequired,
+    reviewSteps: [
+      "Add Typeform hidden fields manually using docs/setup-checklist.md before promoting the form.",
+      "Open the Typeform URL generated by snippets/hidden-field-url-builder.js and submit a test response.",
+      "Compare the exported response payload against this local preview before connecting CRM, spreadsheet, email, or automation tools."
+    ]
+  };
+}
+
+export function normalizeFieldMap(fieldMap) {
+  assertObject(fieldMap, "fieldMap must be an object");
+  assert(fieldMap.kit === "adpages-typeform-lead-attribution-kit", "fieldMap.kit mismatch");
+  assert(fieldMap.platform === "typeform", "fieldMap.platform must be typeform");
+  assert(fieldMap.manualSetupOnly === true, "fieldMap.manualSetupOnly must be true");
+  assert(fieldMap.requiresTypeformApi === false, "fieldMap must avoid Typeform API requirements");
+  assert(fieldMap.requiresOAuth === false, "fieldMap must avoid OAuth requirements");
+  assert(fieldMap.requiresSecrets === false, "fieldMap must avoid secret requirements");
+  assert(fieldMap.requiresWebhooks === false, "fieldMap must avoid webhook requirements");
+  assert(fieldMap.writesDataAutomatically === false, "fieldMap must disclose no automatic writes");
+  assert(Array.isArray(fieldMap.hiddenFields) && fieldMap.hiddenFields.includes("utm_source"), "fieldMap.hiddenFields must include Typeform hidden field names");
+  assert(Array.isArray(fieldMap.fields) && fieldMap.fields.length > 0, "fieldMap.fields must be a non-empty array");
+
+  const seenKeys = new Set();
+  const fields = fieldMap.fields.map((field, index) => {
+    const sourceKey = clean(field.sourceKey);
+    const sourceKind = clean(field.sourceKind);
+    const typeformFieldRef = clean(field.typeformFieldRef);
+    const outputKey = clean(field.outputKey);
+    const type = clean(field.type);
+    const sourcePath = clean(field.sourcePath);
+
+    assert(sourceKey, `fields[${index}].sourceKey is required`);
+    assert(VALID_SOURCE_KINDS.has(sourceKind), `fields[${index}].sourceKind is invalid`);
+    assert(typeformFieldRef, `fields[${index}].typeformFieldRef is required`);
+    assert(/^(answer|hidden|response|derived)_[a-z0-9_]+$|^response_id$/.test(outputKey), `fields[${index}].outputKey is invalid`);
+    assert(VALID_TYPES.has(type), `fields[${index}].type is invalid`);
+    assert(sourcePath, `fields[${index}].sourcePath is required`);
+    assert(!seenKeys.has(outputKey), `duplicate outputKey ${outputKey}`);
+    seenKeys.add(outputKey);
+
+    return {
+      sourceKey,
+      sourceKind,
+      typeformFieldRef,
+      outputKey,
+      type,
+      sourcePath,
+      fallback: field.fallback,
+      required: Boolean(field.required),
+      purpose: clean(field.purpose)
+    };
+  });
+
+  return {
+    kit: clean(fieldMap.kit),
+    kitVersion: clean(fieldMap.kitVersion || "0.1.0"),
+    platform: clean(fieldMap.platform),
+    hiddenFields: fieldMap.hiddenFields.map(clean),
+    fields
+  };
+}
+
+export function createDerivedValues({ form, hidden, answers }) {
+  const landingPageUrl = firstPresent([
+    hidden.landing_page_url,
+    hidden.landing_page,
+    hidden.page_url
+  ]);
+  const utmSource = firstPresent([hidden.utm_source, queryParam(landingPageUrl, "utm_source"), "direct"]);
+  const utmMedium = firstPresent([hidden.utm_medium, queryParam(landingPageUrl, "utm_medium"), "none"]);
+  const utmCampaign = firstPresent([hidden.utm_campaign, queryParam(landingPageUrl, "utm_campaign")]);
+  const firstTouchSummary = buildTouchSummary({
+    source: firstPresent([hidden.first_touch_source, utmSource]),
+    medium: firstPresent([hidden.first_touch_medium, utmMedium]),
+    campaign: firstPresent([hidden.first_touch_campaign, utmCampaign]),
+    timestamp: hidden.first_touch_at
+  });
+  const lastTouchSummary = buildTouchSummary({
+    source: firstPresent([hidden.last_touch_source, utmSource]),
+    medium: firstPresent([hidden.last_touch_medium, utmMedium]),
+    campaign: firstPresent([hidden.last_touch_campaign, utmCampaign]),
+    timestamp: firstPresent([hidden.last_touch_at, form.landedAt])
+  });
+  const consentStatus = firstPresent([
+    hidden.consent_status,
+    normalizeConsentAnswer(answers.marketing_consent),
+    "not_recorded"
+  ]);
+  const consentSource = firstPresent([
+    hidden.consent_source,
+    answers.marketing_consent ? "Typeform answer: marketing_consent" : ""
+  ]);
+  const sourceSummary = buildSourceSummary({
+    source: utmSource,
+    medium: utmMedium,
+    campaign: utmCampaign
+  });
+
+  return {
+    utm_source: utmSource,
+    utm_medium: utmMedium,
+    utm_campaign: utmCampaign,
+    utm_term: firstPresent([hidden.utm_term, queryParam(landingPageUrl, "utm_term")]),
+    utm_content: firstPresent([hidden.utm_content, queryParam(landingPageUrl, "utm_content")]),
+    landing_page_url: clean(landingPageUrl),
+    referrer_url: firstPresent([hidden.referrer_url, hidden.referrer]),
+    gclid: firstPresent([hidden.gclid, queryParam(landingPageUrl, "gclid")]),
+    msclkid: firstPresent([hidden.msclkid, queryParam(landingPageUrl, "msclkid")]),
+    fbclid: firstPresent([hidden.fbclid, queryParam(landingPageUrl, "fbclid")]),
+    first_touch_summary: firstTouchSummary,
+    first_touch_url: firstPresent([hidden.first_touch_url, clean(landingPageUrl)]),
+    last_touch_summary: lastTouchSummary,
+    last_touch_url: firstPresent([hidden.last_touch_url, clean(landingPageUrl)]),
+    consent_status: consentStatus,
+    consent_source: consentSource,
+    source_context: firstPresent([
+      hidden.source_context,
+      form.formTitle ? `Typeform ${form.formTitle}` : ""
+    ]),
+    source_summary: sourceSummary,
+    human_summary: buildHumanSummary({
+      answers,
+      landingPageUrl,
+      sourceSummary,
+      firstTouchSummary,
+      lastTouchSummary,
+      consentStatus,
+      consentSource
+    })
+  };
+}
+
+export function normalizeHiddenFields(hiddenFields) {
+  assertObject(hiddenFields, "hidden fields must be an object");
+  const lower = Object.fromEntries(
+    Object.entries(hiddenFields).map(([key, value]) => [clean(key).toLowerCase(), clean(value)])
+  );
+  const normalized = { ...lower };
+  for (const [canonical, aliases] of Object.entries(HIDDEN_ALIASES)) {
+    normalized[canonical] = firstPresent(aliases.map((alias) => lower[alias]));
+  }
+  return normalized;
+}
+
+export function normalizeAnswers(answers) {
+  assert(Array.isArray(answers), "answers must be an array");
+  const byRef = new Map();
+  for (const answer of answers) {
+    const fieldRef = clean(answer?.field?.ref);
+    const fieldId = clean(answer?.field?.id);
+    const value = answerValue(answer);
+    if (fieldRef) byRef.set(fieldRef, value);
+    if (fieldId) byRef.set(fieldId, value);
+  }
+
+  return {
+    contact_name: answerByRef(byRef, ["contact_name", "full_name", "name"]),
+    email: answerByRef(byRef, ["email", "contact_email"]),
+    phone: answerByRef(byRef, ["phone", "phone_number", "mobile"]),
+    service_requested: answerByRef(byRef, ["service_requested", "service", "job_type"]),
+    service_area: answerByRef(byRef, ["service_area", "suburb", "location", "postcode"]),
+    urgency: answerByRef(byRef, ["urgency", "timeframe"]),
+    message: answerByRef(byRef, ["message", "job_details", "notes"]),
+    marketing_consent: answerByRef(byRef, ["marketing_consent", "consent", "privacy_consent"])
+  };
+}
+
+export function buildQualityChecklist({ form, hidden, answers, derived, formResponse }) {
+  const answerCount = Array.isArray(formResponse.answers) ? formResponse.answers.length : 0;
+  const hiddenCount = Object.values(hidden).filter(Boolean).length;
+  const hasCampaign = Boolean(clean(derived.utm_source) && clean(derived.utm_medium) && clean(derived.utm_campaign));
+  const hasClickId = Boolean(clean(derived.gclid) || clean(derived.msclkid) || clean(derived.fbclid));
+  const hasTouches = Boolean(clean(derived.first_touch_summary) && clean(derived.last_touch_summary));
+  const landingPageUrl = clean(derived.landing_page_url);
+  const hasContactPath = Boolean(clean(answers.phone) || clean(answers.email));
+  const hasServiceFit = Boolean(clean(answers.service_requested) && clean(answers.service_area));
+  const hasConsent = clean(derived.consent_status) !== "not_recorded";
+
+  return [
+    {
+      check: "Typeform response shape",
+      status: form.formId && form.responseId && answerCount > 0 ? "pass" : "missing",
+      note: form.formId && form.responseId && answerCount > 0 ? "Form ID, response ID, and answers are present." : "The response payload shape needs manual review."
+    },
+    {
+      check: "Typeform hidden fields",
+      status: hiddenCount >= 8 ? "pass" : "review",
+      note: hiddenCount >= 8 ? "Hidden-field attribution context is populated." : "Hidden fields look incomplete; review the Typeform URL setup."
+    },
+    {
+      check: "Campaign attribution",
+      status: hasCampaign ? "pass" : "review",
+      note: hasCampaign ? "UTM source, medium, and campaign are present." : "Campaign attribution is incomplete."
+    },
+    {
+      check: "Click identifiers",
+      status: hasClickId ? "pass" : "review",
+      note: hasClickId ? "At least one click ID is present." : "No click IDs were captured."
+    },
+    {
+      check: "First and last touch",
+      status: hasTouches ? "pass" : "review",
+      note: hasTouches ? "First-touch and last-touch summaries are present." : "Touch history needs manual review."
+    },
+    {
+      check: "Landing page context",
+      status: landingPageUrl.startsWith("https://") ? "pass" : "review",
+      note: landingPageUrl.startsWith("https://") ? "Landing page URL is present and uses HTTPS." : "Landing page URL is missing or not HTTPS."
+    },
+    {
+      check: "Contact path",
+      status: hasContactPath ? "pass" : "missing",
+      note: hasContactPath ? "Phone or email answer is present." : "Phone or email is needed before sales follow-up."
+    },
+    {
+      check: "Service fit",
+      status: hasServiceFit ? "pass" : "review",
+      note: hasServiceFit ? "Service and area answers are present." : "Service or area answers should be reviewed."
+    },
+    {
+      check: "Consent context",
+      status: hasConsent ? "pass" : "missing",
+      note: hasConsent ? "Consent status is recorded." : "Consent status must be reviewed before follow-up automation."
+    },
+    {
+      check: "Human QA",
+      status: "review",
+      note: "Review a real Typeform test response before CRM sync, spreadsheet import, email notification, or reporting use."
+    }
+  ];
+}
+
+function extractFormResponse(response) {
+  if (response.form_response && typeof response.form_response === "object") {
+    return response.form_response;
+  }
+  return response;
+}
+
+function answerByRef(byRef, refs) {
+  return firstPresent(refs.map((ref) => byRef.get(ref)));
+}
+
+function answerValue(answer) {
+  if (!answer || typeof answer !== "object") return "";
+  if (answer.type === "choice") return clean(answer.choice?.label);
+  if (answer.type === "choices") return clean(answer.choices?.labels?.join(", "));
+  if (answer.type === "boolean") return answer.boolean === true ? "yes" : answer.boolean === false ? "no" : "";
+  if (answer.type === "number") return Number.isFinite(answer.number) ? String(answer.number) : "";
+  if (answer.type === "email") return clean(answer.email);
+  if (answer.type === "phone_number") return clean(answer.phone_number);
+  if (answer.type === "url") return clean(answer.url);
+  if (answer.type === "date") return clean(answer.date);
+  if (answer.type === "file_url") return clean(answer.file_url);
+  if (answer.type === "text") return clean(answer.text);
+  return firstPresent([
+    answer.text,
+    answer.email,
+    answer.phone_number,
+    answer.url,
+    answer.date,
+    answer.value
+  ]);
+}
+
+function normalizeConsentAnswer(answer) {
+  const value = clean(answer).toLowerCase();
+  if (["yes", "true", "granted", "accepted", "opted in", "opt-in"].includes(value)) return "granted";
+  if (["no", "false", "denied", "declined", "opted out", "opt-out"].includes(value)) return "denied";
+  return "";
+}
+
+function buildSourceSummary({ source, medium, campaign }) {
+  const parts = [source, medium, campaign].map(clean).filter(Boolean);
+  return parts.length ? parts.join(" / ") : "unknown source";
+}
+
+function buildTouchSummary({ source, medium, campaign, timestamp }) {
+  const summary = buildSourceSummary({ source, medium, campaign });
+  return clean(timestamp) ? `${summary} at ${clean(timestamp)}` : summary;
+}
+
+function buildHumanSummary({ answers, landingPageUrl, sourceSummary, firstTouchSummary, lastTouchSummary, consentStatus, consentSource }) {
+  const contact = clean(answers.contact_name) || "Unknown respondent";
+  const service = clean(answers.service_requested) || "an enquiry";
+  const area = clean(answers.service_area);
+  const location = area ? ` in ${area}` : "";
+  return [
+    `Typeform lead attribution preview: ${contact} asked about ${service}${location} from ${clean(sourceSummary) || "unknown source"}.`,
+    `Landing page: ${clean(landingPageUrl) || "not supplied"}.`,
+    `First touch: ${clean(firstTouchSummary) || "unknown source"}.`,
+    `Last touch: ${clean(lastTouchSummary) || "unknown source"}.`,
+    `Consent: ${clean(consentStatus) || "not_recorded"}${clean(consentSource) ? ` via ${clean(consentSource)}` : ""}.`
+  ].join(" ");
+}
+
+function queryParam(url, key) {
+  const text = clean(url);
+  if (!text) return "";
+  try {
+    return new URL(text).searchParams.get(key) ?? "";
+  } catch {
+    return "";
+  }
+}
+
+function getByPath(source, path) {
+  const parts = clean(path).split(".").filter(Boolean);
+  let value = source;
+  for (const part of parts) {
+    if (!value || typeof value !== "object" || !(part in value)) {
+      return undefined;
+    }
+    value = value[part];
+  }
+  return value;
+}
+
+function firstPresent(values) {
+  return values.find((value) => clean(value) !== "") ?? "";
+}
+
+function clean(value) {
+  return String(value ?? "").trim();
+}
+
+function assertObject(value, message) {
+  assert(value && typeof value === "object" && !Array.isArray(value), message);
+}
+
+function assert(condition, message) {
+  if (!condition) {
+    throw new Error(message);
+  }
+}

@@ -1,0 +1,352 @@
+{
+  "kit": "adpages-typeform-lead-attribution-kit",
+  "kitVersion": "0.1.0",
+  "platform": "typeform",
+  "manualSetupOnly": true,
+  "requiresTypeformApi": false,
+  "requiresOAuth": false,
+  "requiresSecrets": false,
+  "requiresWebhooks": false,
+  "writesDataAutomatically": false,
+  "fieldNote": "Typeform hidden fields are configured manually on each form. Answer refs must be reviewed against the account-specific form before any production use.",
+  "hiddenFields": [
+    "utm_source",
+    "utm_medium",
+    "utm_campaign",
+    "utm_term",
+    "utm_content",
+    "landing_page_url",
+    "referrer_url",
+    "gclid",
+    "msclkid",
+    "fbclid",
+    "first_touch_source",
+    "first_touch_medium",
+    "first_touch_campaign",
+    "first_touch_url",
+    "first_touch_at",
+    "last_touch_source",
+    "last_touch_medium",
+    "last_touch_campaign",
+    "last_touch_url",
+    "last_touch_at",
+    "consent_status",
+    "consent_source",
+    "source_context"
+  ],
+  "fields": [
+    {
+      "sourceKey": "response_id",
+      "sourceKind": "response",
+      "typeformFieldRef": "form_response.token",
+      "outputKey": "response_id",
+      "type": "review",
+      "sourcePath": "form.responseId",
+      "required": true,
+      "purpose": "Keep a stable Typeform response identifier for manual QA."
+    },
+    {
+      "sourceKey": "form_id",
+      "sourceKind": "response",
+      "typeformFieldRef": "form_response.form_id",
+      "outputKey": "response_form_id",
+      "type": "review",
+      "sourcePath": "form.formId",
+      "required": true,
+      "purpose": "Confirm the attribution preview was generated from the expected Typeform."
+    },
+    {
+      "sourceKey": "landed_at",
+      "sourceKind": "response",
+      "typeformFieldRef": "form_response.landed_at",
+      "outputKey": "response_landed_at",
+      "type": "review",
+      "sourcePath": "form.landedAt",
+      "required": false,
+      "purpose": "Preserve Typeform landing time for manual comparison."
+    },
+    {
+      "sourceKey": "submitted_at",
+      "sourceKind": "response",
+      "typeformFieldRef": "form_response.submitted_at",
+      "outputKey": "response_submitted_at",
+      "type": "review",
+      "sourcePath": "form.submittedAt",
+      "required": true,
+      "purpose": "Preserve Typeform submission time for manual comparison."
+    },
+    {
+      "sourceKey": "contact_name",
+      "sourceKind": "answer",
+      "typeformFieldRef": "contact_name",
+      "outputKey": "answer_contact_name",
+      "type": "identity",
+      "sourcePath": "answers.contact_name",
+      "required": true,
+      "purpose": "Map the respondent name answer."
+    },
+    {
+      "sourceKey": "email",
+      "sourceKind": "answer",
+      "typeformFieldRef": "email",
+      "outputKey": "answer_email",
+      "type": "identity",
+      "sourcePath": "answers.email",
+      "required": false,
+      "purpose": "Map the respondent email answer when present."
+    },
+    {
+      "sourceKey": "phone",
+      "sourceKind": "answer",
+      "typeformFieldRef": "phone",
+      "outputKey": "answer_phone",
+      "type": "identity",
+      "sourcePath": "answers.phone",
+      "required": true,
+      "purpose": "Map the respondent phone answer for fast follow-up."
+    },
+    {
+      "sourceKey": "service_requested",
+      "sourceKind": "answer",
+      "typeformFieldRef": "service_requested",
+      "outputKey": "answer_service_requested",
+      "type": "qualification",
+      "sourcePath": "answers.service_requested",
+      "required": true,
+      "purpose": "Map the requested service answer."
+    },
+    {
+      "sourceKey": "service_area",
+      "sourceKind": "answer",
+      "typeformFieldRef": "service_area",
+      "outputKey": "answer_service_area",
+      "type": "qualification",
+      "sourcePath": "answers.service_area",
+      "required": false,
+      "purpose": "Map the suburb, city, or service-area answer."
+    },
+    {
+      "sourceKey": "urgency",
+      "sourceKind": "answer",
+      "typeformFieldRef": "urgency",
+      "outputKey": "answer_urgency",
+      "type": "qualification",
+      "sourcePath": "answers.urgency",
+      "required": false,
+      "purpose": "Map urgency for intake prioritisation."
+    },
+    {
+      "sourceKey": "form_message",
+      "sourceKind": "answer",
+      "typeformFieldRef": "message",
+      "outputKey": "answer_form_message",
+      "type": "qualification",
+      "sourcePath": "answers.message",
+      "required": false,
+      "purpose": "Map the free-text message answer."
+    },
+    {
+      "sourceKey": "marketing_consent",
+      "sourceKind": "answer",
+      "typeformFieldRef": "marketing_consent",
+      "outputKey": "answer_marketing_consent",
+      "type": "consent",
+      "sourcePath": "answers.marketing_consent",
+      "required": false,
+      "purpose": "Record the visible Typeform consent answer for review."
+    },
+    {
+      "sourceKey": "utm_source",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "utm_source",
+      "outputKey": "hidden_utm_source",
+      "type": "attribution",
+      "sourcePath": "derived.utm_source",
+      "fallback": "direct",
+      "required": true,
+      "purpose": "Preserve the captured UTM source hidden field."
+    },
+    {
+      "sourceKey": "utm_medium",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "utm_medium",
+      "outputKey": "hidden_utm_medium",
+      "type": "attribution",
+      "sourcePath": "derived.utm_medium",
+      "fallback": "none",
+      "required": true,
+      "purpose": "Preserve the captured UTM medium hidden field."
+    },
+    {
+      "sourceKey": "utm_campaign",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "utm_campaign",
+      "outputKey": "hidden_utm_campaign",
+      "type": "attribution",
+      "sourcePath": "derived.utm_campaign",
+      "required": false,
+      "purpose": "Preserve the captured UTM campaign hidden field."
+    },
+    {
+      "sourceKey": "utm_term",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "utm_term",
+      "outputKey": "hidden_utm_term",
+      "type": "attribution",
+      "sourcePath": "derived.utm_term",
+      "required": false,
+      "purpose": "Preserve paid-search keyword or audience context."
+    },
+    {
+      "sourceKey": "utm_content",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "utm_content",
+      "outputKey": "hidden_utm_content",
+      "type": "attribution",
+      "sourcePath": "derived.utm_content",
+      "required": false,
+      "purpose": "Preserve creative, ad, or placement context."
+    },
+    {
+      "sourceKey": "landing_page_url",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "landing_page_url",
+      "outputKey": "hidden_landing_page_url",
+      "type": "attribution",
+      "sourcePath": "derived.landing_page_url",
+      "required": true,
+      "purpose": "Show the landing page that sent the user to Typeform."
+    },
+    {
+      "sourceKey": "referrer_url",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "referrer_url",
+      "outputKey": "hidden_referrer_url",
+      "type": "attribution",
+      "sourcePath": "derived.referrer_url",
+      "required": false,
+      "purpose": "Preserve browser referrer context when captured."
+    },
+    {
+      "sourceKey": "gclid",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "gclid",
+      "outputKey": "hidden_gclid",
+      "type": "attribution",
+      "sourcePath": "derived.gclid",
+      "required": false,
+      "purpose": "Preserve Google Ads click ID context when available."
+    },
+    {
+      "sourceKey": "msclkid",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "msclkid",
+      "outputKey": "hidden_msclkid",
+      "type": "attribution",
+      "sourcePath": "derived.msclkid",
+      "required": false,
+      "purpose": "Preserve Microsoft Ads click ID context when available."
+    },
+    {
+      "sourceKey": "fbclid",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "fbclid",
+      "outputKey": "hidden_fbclid",
+      "type": "attribution",
+      "sourcePath": "derived.fbclid",
+      "required": false,
+      "purpose": "Preserve Meta click ID context when available."
+    },
+    {
+      "sourceKey": "first_touch_summary",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "first_touch_*",
+      "outputKey": "derived_first_touch_summary",
+      "type": "attribution",
+      "sourcePath": "derived.first_touch_summary",
+      "required": false,
+      "purpose": "Summarise first-touch source, medium, campaign, and timestamp."
+    },
+    {
+      "sourceKey": "first_touch_url",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "first_touch_url",
+      "outputKey": "hidden_first_touch_url",
+      "type": "attribution",
+      "sourcePath": "derived.first_touch_url",
+      "required": false,
+      "purpose": "Preserve first-touch URL context."
+    },
+    {
+      "sourceKey": "last_touch_summary",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "last_touch_*",
+      "outputKey": "derived_last_touch_summary",
+      "type": "attribution",
+      "sourcePath": "derived.last_touch_summary",
+      "required": false,
+      "purpose": "Summarise last-touch source, medium, campaign, and timestamp."
+    },
+    {
+      "sourceKey": "last_touch_url",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "last_touch_url",
+      "outputKey": "hidden_last_touch_url",
+      "type": "attribution",
+      "sourcePath": "derived.last_touch_url",
+      "required": false,
+      "purpose": "Preserve last-touch URL context."
+    },
+    {
+      "sourceKey": "consent_status",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "consent_status",
+      "outputKey": "derived_consent_status",
+      "type": "consent",
+      "sourcePath": "derived.consent_status",
+      "fallback": "not_recorded",
+      "required": true,
+      "purpose": "Record consent status captured before or during Typeform submission."
+    },
+    {
+      "sourceKey": "consent_source",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "consent_source",
+      "outputKey": "derived_consent_source",
+      "type": "consent",
+      "sourcePath": "derived.consent_source",
+      "required": false,
+      "purpose": "Record where consent was captured."
+    },
+    {
+      "sourceKey": "source_context",
+      "sourceKind": "hidden",
+      "typeformFieldRef": "source_context",
+      "outputKey": "derived_source_context",
+      "type": "review",
+      "sourcePath": "derived.source_context",
+      "required": false,
+      "purpose": "Keep human-readable implementation context for review."
+    },
+    {
+      "sourceKey": "source_summary",
+      "sourceKind": "derived",
+      "typeformFieldRef": "derived.source_summary",
+      "outputKey": "derived_source_summary",
+      "type": "review",
+      "sourcePath": "derived.source_summary",
+      "required": true,
+      "purpose": "Provide a short channel summary for downstream notes."
+    },
+    {
+      "sourceKey": "attribution_summary",
+      "sourceKind": "derived",
+      "typeformFieldRef": "derived.human_summary",
+      "outputKey": "derived_attribution_summary",
+      "type": "review",
+      "sourcePath": "derived.human_summary",
+      "required": true,
+      "purpose": "Provide a readable summary for manual lead review."
+    }
+  ]
+}
